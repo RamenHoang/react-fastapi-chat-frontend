@@ -44,7 +44,7 @@ const App = () => {
       {isAuthenticated ? (
         <Main
           accessToken={accessToken}
-          userId={userId}
+          userId={parseInt(userId, 10)}
           publicKeyPara={publicKey}
           privateKeyPara={privateKey}
           logout={logout}
