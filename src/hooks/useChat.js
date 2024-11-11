@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 
-const useChat = (accessToken, userId) => {
+const useChat = async (accessToken, userId) => {
   const [userData, setUserData] = useState(null);
   const [selectedChatId, setSelectedChatId] = useState(null);
   const [newMessage, setNewMessage] = useState("");
@@ -9,10 +9,10 @@ const useChat = (accessToken, userId) => {
   const [showNewGroupPopup, setShowNewGroupPopup] = useState(false);
   const [showLeaveGroup, setShowLeaveGroup] = useState(false);
   const [showAddGroupMember, setShowAddGroupMember] = useState(false);
-  const [isTyping, setIsTyping] = useState(false); // Zustand für das Tippen
-  const [isTypingUser, setIsTypingUser] = useState(null); // Zustand für das Tippen
+  const [isTyping, setIsTyping] = useState(false);
+  const [isTypingUser, setIsTypingUser] = useState(null);
 
-  const socketRef = useRef(null); // WebSocket-Ref für Verbindung
+  const socketRef = useRef(null);
 
   const fetchUserData = async () => {
     try {
@@ -36,37 +36,29 @@ const useChat = (accessToken, userId) => {
     socketRef.current = new WebSocket("ws://localhost:8000/ws");
 
     socketRef.current.onopen = () => {
-      // console.log("WebSocket verbunden");
     };
 
     socketRef.current.onmessage = (event) => {
       try {
-        const messageData = JSON.parse(event.data); // Nachricht parsen
+        const messageData = JSON.parse(event.data);
         const messageType = messageData.type;
-
-        // console.log("WebSocket message received:", messageData);
-        // console.log("WebSocket message type:", messageType);
 
         switch (messageType) {
           case "typing":
-            // console.log("Typing message received:", messageData);
             fetchUserData();
             break;
           case "message":
-            fetchUserData(); // Aktualisiere die Benutzer- oder Nachrichtenliste
+            fetchUserData();
             break;
           default:
-            // console.log("Unknown message type:", messageType);
             break;
         }
       } catch (error) {
-        // console.error("Failed to parse WebSocket message:", event.data);
         fetchUserData();
       }
     };
 
     socketRef.current.onclose = () => {
-      // console.log("WebSocket geschlossen");
     };
 
     return () => {
@@ -77,15 +69,13 @@ const useChat = (accessToken, userId) => {
 
   useEffect(() => {
     const updateTypingStatus = async () => {
-      // console.log("Selected chat ID:", selectedChatId);
       if (!selectedChatId) return;
       try {
-        // Sende eine POST-Anfrage an die API, um den Typing-Status zu aktualisieren
         await axios.post(
           "http://localhost:8000/users/set_typing_status",
           {
             is_typing: isTyping,
-            typing_chat_id: selectedChatId, // Payload mit dem neuen Typing-Status
+            typing_chat_id: selectedChatId,
           },
           {
             headers: {
@@ -94,9 +84,6 @@ const useChat = (accessToken, userId) => {
           }
         );
 
-        // console.log(response.data); // Erfolgsnachricht
-
-        // Sende eine Nachricht an den WebSocket, wenn isTyping geändert wird
         if (
           socketRef.current &&
           socketRef.current.readyState === WebSocket.OPEN
@@ -115,16 +102,14 @@ const useChat = (accessToken, userId) => {
     };
 
     updateTypingStatus();
-  }, [isTyping, userId, accessToken, selectedChatId]); // Abhängigkeiten beibehalten
+  }, [isTyping, userId, accessToken, selectedChatId]);
 
   const handleTyping = () => {
-    // console.log("Typing...");
     setIsTyping(true);
     setIsTypingUser(userId);
 
     clearTimeout(window.typingTimeout);
 
-    // Setzt isTyping auf false nach 1 Sekunde Inaktivität
     window.typingTimeout = setTimeout(() => {
       setIsTyping(false);
     }, 1000);
@@ -146,8 +131,8 @@ const useChat = (accessToken, userId) => {
     setShowAddGroupMember,
     fetchUserData,
     isTyping,
-    isTypingUser, // Exportiere den Typing-Status
-    handleTyping, // Exportiere die handleTyping Funktion
+    isTypingUser,
+    handleTyping,
   };
 };
 

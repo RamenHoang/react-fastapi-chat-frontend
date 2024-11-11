@@ -31,7 +31,6 @@ const Main = ({
   const [loadingChats, setLoadingChats] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [chatIds, setChatIds] = useState([]);
-  // const [selectedChatId, setSelectedChatId] = useState(null);
   const [selectedChat, setSelectedChat] = useState(null);
   const [showNewChatPopup, setShowNewChatPopup] = useState(false);
   const [showNewGroupPopup, setShowNewGroupPopup] = useState(false);
@@ -41,12 +40,10 @@ const Main = ({
 
   // Dummy Methods
   const selectChat = async (chatId) => {
-    // console.log("selectChat aufgerufen mit chatId:", chatId);
     const selected = chats.find((chat) => chat.chatId === chatId);
     setSelectedChatId(chatId);
     setSelectedChat(selected);
-    // console.log("Chat ausgewählt:", selected);
-    await handleMarkMessagesAsRead(selected); // Mark messages as read for selected chat
+    await handleMarkMessagesAsRead(selected);
   };
 
   const handleMarkMessagesAsRead = async (chat) => {
@@ -236,12 +233,12 @@ const Main = ({
             })}
           </ul>
           <div className="mt-6">
-            <button
+            {/* <button
               className="w-full rounded-lg p-3 bg-purple-500 bg-opacity-20 text-black shadow-lg transform hover:scale-105 transition-transform mb-4"
               onClick={() => setShowNewChatPopup(true)}
             >
               New Chat
-            </button>
+            </button> */}
             <button
               className="w-full rounded-lg p-3 bg-pink-500 bg-opacity-20 text-black shadow-lg transform hover:scale-105 transition-transform"
               onClick={() => setShowNewGroupPopup(true)}
