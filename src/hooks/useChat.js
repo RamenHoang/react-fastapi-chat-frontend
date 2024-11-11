@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 
-const useChat = async (accessToken, userId) => {
+const useChat = (accessToken, userId) => {
   const [userData, setUserData] = useState(null);
   const [selectedChatId, setSelectedChatId] = useState(null);
   const [newMessage, setNewMessage] = useState("");
