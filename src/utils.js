@@ -7,28 +7,26 @@ function organizeChatsByUserId(data, userId, privateKeyPara) {
     return [];
   }
 
-  // Erstelle zuerst Einträge für alle Privatchats
-  data.interacting_users.forEach((user) => {
-    if (user.id !== userId) {
-      // Überspringe die eigene ID
+  // data.interacting_users.forEach((user) => {
+  //   if (user.id !== userId) {
+  //     // Überspringe die eigene ID
 
-      chats.push({
-        chatId: user.id,
-        isGroupMessage: false,
-        publicKey: user.publicKey,
-        withUser: {
-          userId: user.id,
-          username: user.username,
-          fullname: user.fullname,
-          isTyping:
-            user.typingChatId === userId && user.isTyping ? true : false,
-        },
-        messages: [],
-      });
-    }
-  });
+  //     chats.push({
+  //       chatId: user.id,
+  //       isGroupMessage: false,
+  //       publicKey: user.publicKey,
+  //       withUser: {
+  //         userId: user.id,
+  //         username: user.username,
+  //         fullname: user.fullname,
+  //         isTyping:
+  //           user.typingChatId === userId && user.isTyping ? true : false,
+  //       },
+  //       messages: [],
+  //     });
+  //   }
+  // });
 
-  // Erstelle dann Einträge für alle Gruppenchats
   data.groups.forEach((group) => {
     const groupMembers = data.memberships
       .filter((membership) => membership.group_id === group.id)
@@ -59,59 +57,59 @@ function organizeChatsByUserId(data, userId, privateKeyPara) {
     }
   });
 
-  // Jetzt füge die Nachrichten zu den entsprechenden Chats hinzu
   data.messages.forEach(async (message) => {
-    const isPrivateMessage =
-      (message.sender_id === userId || message.receiver_id === userId) &&
-      !data.groups.some((group) => group.id === message.receiver_id);
+    // const isPrivateMessage =
+    //   (message.sender_id === userId || message.receiver_id === userId) &&
+    //   !data.groups.some((group) => group.id === message.receiver_id);
 
     const isGroupMessage = data.groups.some(
       (group) => group.id === message.receiver_id
     );
 
-    if (isPrivateMessage) {
-      const chatPartnerId =
-        message.sender_id === userId ? message.receiver_id : message.sender_id;
-      const chat = chats.find((c) => c.chatId === chatPartnerId);
-      if (chat) {
-        let decryptedContent = message.content;
-        // try {
-        //   // Entschlüssele den Inhalt der Nachricht
-        //   decryptedContent = decryptMessage(
-        //     privateKeyPara,
-        //     message.content
-        //   );
-        // } catch (error) {
-        //   console.error("Fehler beim Entschlüsseln der Nachricht:", error);
-        //   decryptedContent = "Fehler beim Entschlüsseln"; // Setze eine Standardfehlermeldung
-        // }
+    // if (isPrivateMessage) {
+    //   const chatPartnerId =
+    //     message.sender_id === userId ? message.receiver_id : message.sender_id;
+    //   const chat = chats.find((c) => c.chatId === chatPartnerId);
+    //   if (chat) {
+    //     let decryptedContent = message.content;
+    //     // try {
+    //     //   // Entschlüssele den Inhalt der Nachricht
+    //     //   decryptedContent = decryptMessage(
+    //     //     privateKeyPara,
+    //     //     message.content
+    //     //   );
+    //     // } catch (error) {
+    //     //   console.error("Fehler beim Entschlüsseln der Nachricht:", error);
+    //     //   decryptedContent = "Fehler beim Entschlüsseln"; // Setze eine Standardfehlermeldung
+    //     // }
 
-        chat.messages.push({
-          content: decryptedContent, // Verwende die entschlüsselte Nachricht
-          id: message.id,
-          timestamp: message.timestamp,
-          status: message.status,
-          sender: {
-            userId: message.sender_id,
-            username: data.interacting_users.find(
-              (u) => u.id === message.sender_id
-            )?.username,
-            fullname: data.interacting_users.find(
-              (u) => u.id === message.sender_id
-            )?.fullname,
-          },
-          receiver: {
-            userId: message.receiver_id,
-            username: data.interacting_users.find(
-              (u) => u.id === message.receiver_id
-            )?.username,
-            fullname: data.interacting_users.find(
-              (u) => u.id === message.receiver_id
-            )?.fullname,
-          },
-        });
-      }
-    } else if (isGroupMessage) {
+    //     chat.messages.push({
+    //       content: decryptedContent, // Verwende die entschlüsselte Nachricht
+    //       id: message.id,
+    //       timestamp: message.timestamp,
+    //       status: message.status,
+    //       sender: {
+    //         userId: message.sender_id,
+    //         username: data.interacting_users.find(
+    //           (u) => u.id === message.sender_id
+    //         )?.username,
+    //         fullname: data.interacting_users.find(
+    //           (u) => u.id === message.sender_id
+    //         )?.fullname,
+    //       },
+    //       receiver: {
+    //         userId: message.receiver_id,
+    //         username: data.interacting_users.find(
+    //           (u) => u.id === message.receiver_id
+    //         )?.username,
+    //         fullname: data.interacting_users.find(
+    //           (u) => u.id === message.receiver_id
+    //         )?.fullname,
+    //       },
+    //     });
+    //   }
+    // } else 
+    if (isGroupMessage) {
       const group = data.groups.find((g) => g.id === message.receiver_id);
       const chat = chats.find((c) => c.chatId === group.id);
       if (chat) {

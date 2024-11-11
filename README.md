@@ -11,3 +11,9 @@ npm i
 ```
 npm start
 ```
+
+## Account list:
+
+* alice / password123
+* bob / password456
+* charlie / password789
