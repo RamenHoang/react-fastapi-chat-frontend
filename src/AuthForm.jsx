@@ -49,7 +49,8 @@ const AuthForm = ({ onLoginSuccess }) => {
           response.data.access_token,
           response.data.user_id,
           response.data.private_key,
-          response.data.public_key
+          response.data.public_key,
+          response.data.role
         );
       }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import useChat from "./hooks/useChat";
 import {
   organizeChatsByUserId,
@@ -11,6 +12,8 @@ import LeaveGroupPopup from "./components/LeaveGroupPopup";
 import AddGroupMemberPopup from "./components/AddGroupMemberPopup";
 import { sendMessage, markMessagesAsRead } from "./api/messages";
 import { importPublicKey, encryptMessage, arrayBufferToBase64 } from "./crypto";
+import { ROLE_ADMIN } from "./constants";
+import Navbar from "./components/Navbar";
 
 const Main = ({
   accessToken = null,
@@ -18,10 +21,10 @@ const Main = ({
   publicKeyPara,
   privateKeyPara = null,
   logout,
+  role,
 }) => {
   const {
     userData,
-    setUserData,
     handleTyping,
     selectedChatId,
     setSelectedChatId,
@@ -29,7 +32,6 @@ const Main = ({
 
   const [chats, setChats] = useState([]);
   const [loadingChats, setLoadingChats] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
   const [chatIds, setChatIds] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [showNewChatPopup, setShowNewChatPopup] = useState(false);
@@ -154,52 +156,7 @@ const Main = ({
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200">
-      {/* Header with menu button */}
-      <div className="flex justify-between items-center p-4  shadow-md ">
-        <h1 className="text-2xl font-bold text-gray-800">Chat Application</h1>
-        <div>
-          <button
-            className="p-2 bg-gray-200 rounded-full focus:outline-none"
-            onClick={() => setShowMenu(!showMenu)}
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 6h16M4 12h16M4 18h16"
-              ></path>
-            </svg>
-          </button>
-          {showMenu && (
-            <div className="absolute right-4 mt-2 bg-white  border rounded-lg shadow-lg w-48 py-2">
-              <p className="px-4 py-2 text-gray-700">
-                {
-                  userData.interacting_users.find((u) => u.id === userId)
-                    ?.fullname
-                }
-              </p>
-              <hr className="my-1" />
-              <button className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">
-                Settings
-              </button>
-              <button
-                className="block w-full text-left px-4 py-2 text-red-500 hover:bg-red-100"
-                onClick={logout}
-              >
-                Logout
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
+      <Navbar userData={userData} userId={userId} logout={logout} />
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <div className="w-64 p-4 shadow-md flex flex-col">
@@ -210,16 +167,15 @@ const Main = ({
               const chatName = chat.groupName
                 ? chat.groupName
                 : chat.withUser
-                ? chat.withUser.fullname
-                : "Unknown";
+                  ? chat.withUser.fullname
+                  : "Unknown";
               return (
                 <li
                   key={chatId}
-                  className={`p-3 mb-2 cursor-pointer flex flex-row justify-between rounded-lg transition-all duration-200 ${
-                    selectedChatId === chatId
-                      ? "bg-blue-500 bg-opacity-20 text-white shadow-lg transform hover:scale-105"
-                      : "hover:bg-gray-100 hover:bg-opacity-40"
-                  }`}
+                  className={`p-3 mb-2 cursor-pointer flex flex-row justify-between rounded-lg transition-all duration-200 ${selectedChatId === chatId
+                    ? "bg-blue-500 bg-opacity-20 text-white shadow-lg transform hover:scale-105"
+                    : "hover:bg-gray-100 hover:bg-opacity-40"
+                    }`}
                   onClick={() => selectChat(chatId)}
                 >
                   <div className="text-gray-900 font-medium">{chatName}</div>
@@ -232,20 +188,22 @@ const Main = ({
               );
             })}
           </ul>
-          <div className="mt-6">
-            {/* <button
+          {role == ROLE_ADMIN && (
+            <div className="mt-6">
+              {/* <button
               className="w-full rounded-lg p-3 bg-purple-500 bg-opacity-20 text-black shadow-lg transform hover:scale-105 transition-transform mb-4"
               onClick={() => setShowNewChatPopup(true)}
             >
               New Chat
             </button> */}
-            <button
-              className="w-full rounded-lg p-3 bg-pink-500 bg-opacity-20 text-black shadow-lg transform hover:scale-105 transition-transform"
-              onClick={() => setShowNewGroupPopup(true)}
-            >
-              New Group
-            </button>
-          </div>
+              <button
+                className="w-full rounded-lg p-3 bg-pink-500 bg-opacity-20 text-black shadow-lg transform hover:scale-105 transition-transform"
+                onClick={() => setShowNewGroupPopup(true)}
+              >
+                New Group
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Chat Content */}
@@ -299,47 +257,45 @@ const Main = ({
                   (member) => member.userId !== userId && member.isTyping
                 )
                   ? selectedChat.members.map((member, index) =>
-                      member.userId !== userId && member.isTyping ? (
-                        <div key={index} className="mb-2">
-                          <span className="text-sm text-gray-500">
-                            {member.fullname}
-                          </span>
-                          <br />
-                          <span className="inline-block p-2 rounded-lg">
-                            {member.isTyping && "types..."}
-                          </span>
-                        </div>
-                      ) : null
-                    )
+                    member.userId !== userId && member.isTyping ? (
+                      <div key={index} className="mb-2">
+                        <span className="text-sm text-gray-500">
+                          {member.fullname}
+                        </span>
+                        <br />
+                        <span className="inline-block p-2 rounded-lg">
+                          {member.isTyping && "types..."}
+                        </span>
+                      </div>
+                    ) : null
+                  )
                   : null}
 
                 {/* Message list */}
                 {selectedChat?.messages?.length > 0
                   ? selectedChat.messages.map((message, index) => (
-                      <div
-                        key={index}
-                        className={`mb-2 ${
-                          message.sender.userId === userId ? "text-right" : ""
+                    <div
+                      key={index}
+                      className={`mb-2 ${message.sender.userId === userId ? "text-right" : ""
                         }`}
-                      >
-                        <span className="text-sm text-gray-500">
-                          {message.sender.fullname}
-                          <span className="ml-2">
-                            {formatTimestamp(message.timestamp)}
-                          </span>
+                    >
+                      <span className="text-sm text-gray-500">
+                        {message.sender.fullname}
+                        <span className="ml-2">
+                          {formatTimestamp(message.timestamp)}
                         </span>
-                        <br />
-                        <span
-                          className={`inline-block p-2 rounded-lg ${
-                            message.sender.userId === userId
-                              ? "bg-blue-50"
-                              : "bg-green-50"
+                      </span>
+                      <br />
+                      <span
+                        className={`inline-block p-2 rounded-lg ${message.sender.userId === userId
+                          ? "bg-blue-50"
+                          : "bg-green-50"
                           } shadow-sm`}
-                        >
-                          {message.content}
-                        </span>
-                      </div>
-                    ))
+                      >
+                        {message.content}
+                      </span>
+                    </div>
+                  ))
                   : null}
 
                 {/* Check if both members and messages are empty */}

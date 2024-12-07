@@ -6,24 +6,27 @@ const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [accessToken, setAccessToken] = useState(localStorage.getItem('accessToken'));
   const [userId, setUserId] = useState(localStorage.getItem('userId'));
+  const [role, setRole] = useState(localStorage.getItem('role'));
   const [privateKey, setPrivateKey] = useState(localStorage.getItem('privateKey'));
   const [publicKey, setPublicKey] = useState(localStorage.getItem('publicKey'));
 
   useEffect(() => {
-    if (accessToken && userId && privateKey && publicKey) {
+    if (accessToken && userId && role && privateKey && publicKey) {
       setIsAuthenticated(true);
     }
-  }, [accessToken, userId, privateKey, publicKey]);
+  }, [accessToken, userId, role, privateKey, publicKey]);
 
-  const handleLoginSuccess = (token, userId, privateKey, publicKey) => {
+  const handleLoginSuccess = (token, userId, privateKey, publicKey, role) => {
     localStorage.setItem('accessToken', token);
     localStorage.setItem('userId', userId);
     localStorage.setItem('privateKey', privateKey);
     localStorage.setItem('publicKey', publicKey);
+    localStorage.setItem('role', role);
     setAccessToken(token);
     setUserId(userId);
     setPrivateKey(privateKey);
     setPublicKey(publicKey);
+    setRole(role);
     setIsAuthenticated(true);
   };
 
@@ -48,6 +51,7 @@ const App = () => {
           publicKeyPara={publicKey}
           privateKeyPara={privateKey}
           logout={logout}
+          role={role}
         />
       ) : (
         <AuthForm onLoginSuccess={handleLoginSuccess} />
