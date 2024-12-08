@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import AuthForm from "./AuthForm";
 import Main from "./Main";
+import ListUsers from "./ListUsers";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -42,21 +44,28 @@ const App = () => {
     setPublicKey(null);
   };
 
-  return (
-    <div>
-      {isAuthenticated ? (
-        <Main
+  return isAuthenticated ? (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Main
           accessToken={accessToken}
           userId={parseInt(userId, 10)}
           publicKeyPara={publicKey}
           privateKeyPara={privateKey}
           logout={logout}
           role={role}
-        />
-      ) : (
-        <AuthForm onLoginSuccess={handleLoginSuccess} />
-      )}
-    </div>
+        />} />
+        <Route path="/list-users" element={<ListUsers
+          accessToken={accessToken}
+          userId={parseInt(userId, 10)}
+          logout={logout}
+          role={role}
+          />} />
+      </Routes>
+    </Router>
+
+  ) : (
+    <AuthForm onLoginSuccess={handleLoginSuccess} />
   );
 };
 

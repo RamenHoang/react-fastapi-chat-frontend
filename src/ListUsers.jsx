@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { fetchUsers } from "./api/users";
 import Navbar from "./components/Navbar";
+import useChat from "./hooks/useChat";
 import { ROLE_NAMES, ROLE_MODERATOR, ROLE_MEMBER } from "./constants";
 
-const ListUsers = ({ accessToken, userData, userId, logout }) => {
+const ListUsers = ({ accessToken, userId, logout, role }) => {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [formData, setFormData] = useState({ full_name: "", username: "", role: ROLE_MEMBER });
   const [activeTab, setActiveTab] = useState("new");
+
+  const {
+    userData,
+  } = useChat(accessToken, userId);
 
   useEffect(() => {
     const getUsers = async () => {
