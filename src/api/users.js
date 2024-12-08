@@ -17,3 +17,8 @@ export const fetchUsers = async (accessToken) => {
     throw error;
   }
 };
+
+export const registerUser = async (newUserData) => {
+  const url = `${BASE_URL}/users/register`;
+  return await axios.post(url, newUserData);
+};
