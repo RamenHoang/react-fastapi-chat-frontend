@@ -1,48 +1,44 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from "react-toastify";
 import { loginUser, registerUser } from "./api/auth";
 
 const AuthForm = ({ onLoginSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  function isPasswordStrong(password) {
-    const minLength = 8;
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  const location = useLocation();
+  const navigate = useNavigate();
 
-    return (
-      password.length >= minLength &&
-      hasUpperCase &&
-      hasLowerCase &&
-      hasNumber &&
-      hasSpecialChar
-    );
-  }
+  const useQuery = () => {
+    return new URLSearchParams(location.search);
+  };
+
+  const query = useQuery();
+
+  useEffect(() => {
+    const toastMessage = query.get("toast");
+    if (toastMessage) {
+      toast(toastMessage);
+      query.delete("toast");
+      navigate({ search: query.toString() }, { replace: true });
+    }
+  }, [query, navigate]);
 
   const handleAuth = async (e) => {
     e.preventDefault();
     setError("");
     setMessage("");
 
-    // if (!isPasswordStrong(password)) {
-    //   setError(
-    //     "Password is not strong enough. The password must contain at least 1 uppercase letter, 1 lowercase letter, 1 special character, 1 number, and at least 8 characters."
-    //   );
-    //   return;
-    // }
-
     try {
       const response = isLogin
         ? await loginUser(username, password)
-        : await registerUser(username, fullName, password);
-
-      // setMessage(`Success: ${response.data.access_token}`);
+        : await registerUser(username, fullName, email, password);
 
       if (isLogin && onLoginSuccess) {
         onLoginSuccess(
@@ -59,7 +55,8 @@ const AuthForm = ({ onLoginSuccess }) => {
         setMessage("User registered successfully. You can now login.");
       }
     } catch (err) {
-      setError(err.response?.data?.message || "An error occurred");
+      console.log(err);
+      setError(err.response?.data?.detail || "An error occurred");
     }
   };
 
@@ -85,16 +82,28 @@ const AuthForm = ({ onLoginSuccess }) => {
         </div>
 
         {!isLogin && (
-          <div className="mb-4">
-            <label className="block mb-1 text-gray-600">Full Name</label>
-            <input
-              type="text"
-              className="w-full p-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-            />
-          </div>
+          <>
+            <div className="mb-4">
+              <label className="block mb-1 text-gray-600">Full Name</label>
+              <input
+                type="text"
+                className="w-full p-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 text-gray-600">Email</label>
+              <input
+                type="email"
+                className="w-full p-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          </>
         )}
 
         <div className="mb-4">

@@ -1,14 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { fetchUsers, registerUser } from "./api/users";
+import { fetchUsers, registerUser, updateUser, resetPassword, deleteUser } from "./api/users"; // Import resetPassword and deleteUser functions
 import Navbar from "./components/Navbar";
 import useChat from "./hooks/useChat";
 import { ROLE_NAMES, ROLE_MODERATOR, ROLE_MEMBER } from "./constants";
+import { toast } from "react-toastify"; // Import toast
+import "react-toastify/dist/ReactToastify.css"; // Import toast styles
+import "./Loader.css"; // Import loader styles
+import Modal from "./components/Modal"; // Import Modal component
 
 const ListUsers = ({ accessToken, userId, logout, role }) => {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [formData, setFormData] = useState({ full_name: "", username: "", email: "", password: "", role: ROLE_MEMBER });
   const [activeTab, setActiveTab] = useState("new");
+  const [loading, setLoading] = useState(false); // Add loading state
+  const [showDeleteModal, setShowDeleteModal] = useState(false); // Add state for delete modal
+  const [userToDelete, setUserToDelete] = useState(null); // Add state for user to delete
 
   const {
     userData,
@@ -16,11 +23,15 @@ const ListUsers = ({ accessToken, userId, logout, role }) => {
 
   useEffect(() => {
     const getUsers = async () => {
+      setLoading(true); // Set loading to true
       try {
         const usersData = await fetchUsers(accessToken);
         setUsers(usersData);
       } catch (error) {
         console.error("Error fetching users:", error);
+        toast.error("Error fetching users");
+      } finally {
+        setLoading(false); // Set loading to false
       }
     };
 
@@ -45,32 +56,82 @@ const ListUsers = ({ accessToken, userId, logout, role }) => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true); // Set loading to true
     try {
       if (selectedUser) {
-        // Add logic to update user
-        console.log("Update user:", formData);
+        delete formData.password;
+        await updateUser(accessToken, selectedUser.id, formData);
+        const usersData = await fetchUsers(accessToken);
+        setUsers(usersData);
+        setSelectedUser(null);
+        setFormData({ full_name: "", username: "", email: "", password: "", role: ROLE_MEMBER });
+        setActiveTab("new");
+        toast.success("User updated successfully");
       } else {
         await registerUser(formData);
         const usersData = await fetchUsers(accessToken);
         setUsers(usersData);
         setFormData({ full_name: "", username: "", email: "", password: "", role: ROLE_MEMBER });
         setActiveTab("new");
+        toast.success("User created successfully");
       }
     } catch (error) {
       console.error("Error submitting form:", error);
+      toast.error("Error submitting form");
+    } finally {
+      setLoading(false); // Set loading to false
     }
   };
 
-  const handleDeleteUser = (userId) => {
-    // Add logic to delete user
-    console.log("Delete user with id:", userId);
+  const handleDeleteUser = async () => {
+    setLoading(true); // Set loading to true
+    try {
+      await deleteUser(accessToken, userToDelete); // Call deleteUser API
+      const usersData = await fetchUsers(accessToken);
+      setUsers(usersData);
+      toast.success("User deleted successfully");
+      setShowDeleteModal(false); // Close modal
+      setUserToDelete(null); // Reset user to delete
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error(error.response?.data?.detail || "An error occurred");
+    } finally {
+      setLoading(false); // Set loading to false
+    }
+  };
+
+  const handleResetPassword = async (userId) => {
+    setLoading(true); // Set loading to true
+    try {
+      await resetPassword(accessToken, userId); // Call resetPassword API
+      toast.success("Password reset successfully");
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      toast.error(error.response?.data?.detail || "An error occurred");
+    } finally {
+      setLoading(false); // Set loading to false
+    }
   };
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200">
-      <Navbar userData={userData} userId={userId} logout={logout} />
+      {loading && (
+        <div className="loader-overlay">
+          <div className="loader"></div>
+        </div>
+      )}
+      <Navbar userData={userData} userId={userId} logout={logout} role={role} accessToken={accessToken} />
       <div className="flex flex-1 justify-center overflow-hidden">
         <div className="w-full max-w-6xl p-4 shadow-md flex flex-col">
+          {/* Add Modal component */}
+          {showDeleteModal && (
+            <Modal
+              title="Confirm Delete"
+              message="Are you sure you want to delete this user?"
+              onConfirm={handleDeleteUser}
+              onCancel={() => setShowDeleteModal(false)}
+            />
+          )}
           <div className="mb-4">
             <button
               className={`p-2 ${activeTab === "new" ? "bg-blue-500 text-white" : "bg-gray-200"} rounded-lg mr-2`}
@@ -201,10 +262,19 @@ const ListUsers = ({ accessToken, userId, logout, role }) => {
                         Edit
                       </button>
                       <button
-                        className="p-1 bg-red-500 text-white rounded"
-                        onClick={() => handleDeleteUser(user.id)}
+                        className="mr-2 p-1 bg-red-500 text-white rounded"
+                        onClick={() => {
+                          setUserToDelete(user.id); // Set user to delete
+                          setShowDeleteModal(true); // Show delete modal
+                        }}
                       >
                         Delete
+                      </button>
+                      <button
+                        className="p-1 bg-blue-500 text-white rounded"
+                        onClick={() => handleResetPassword(user.id)}
+                      >
+                        Reset Password
                       </button>
                     </td>
                   </tr>

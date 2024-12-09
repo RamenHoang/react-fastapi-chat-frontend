@@ -7,7 +7,7 @@ export const loginUser = async (username, password) => {
   return await axios.post(url, { username, password });
 };
 
-export const registerUser = async (username, fullName, password) => {
+export const registerUser = async (username, fullName, email, password) => {
   const url = `${BASE_URL}/users/register`;
-  return await axios.post(url, { username, full_name: fullName, password });
+  return await axios.post(url, { username, full_name: fullName, email, password });
 };

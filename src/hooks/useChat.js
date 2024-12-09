@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { toast } from "react-toastify";
 
-const useChat = (accessToken, userId) => {
+const useChat = (accessToken, userId, logout) => {
   const [userData, setUserData] = useState(null);
   const [selectedChatId, setSelectedChatId] = useState(null);
   const [newMessage, setNewMessage] = useState("");
@@ -27,6 +28,11 @@ const useChat = (accessToken, userId) => {
       setUserData(response.data);
     } catch (err) {
       console.error("Failed to fetch user data", err);
+      if (err.response?.status === 401) {
+        console.error("Token abgelaufen. Logout.");
+        toast.error(err.response.data.detail);
+        logout();
+      }
     }
   };
 

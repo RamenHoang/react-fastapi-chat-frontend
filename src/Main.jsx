@@ -28,7 +28,7 @@ const Main = ({
     handleTyping,
     selectedChatId,
     setSelectedChatId,
-  } = useChat(accessToken, userId);
+  } = useChat(accessToken, userId, logout);
 
   const [chats, setChats] = useState([]);
   const [loadingChats, setLoadingChats] = useState(false);
@@ -156,7 +156,7 @@ const Main = ({
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200">
-      <Navbar userData={userData} userId={userId} logout={logout} />
+      <Navbar userData={userData} userId={userId} logout={logout} role={role} accessToken={accessToken} />
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <div className="w-64 p-4 shadow-md flex flex-col">

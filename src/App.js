@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { ToastContainer } from "react-toastify";
 import AuthForm from "./AuthForm";
 import Main from "./Main";
 import ListUsers from "./ListUsers";
@@ -42,6 +43,8 @@ const App = () => {
     setAccessToken(null);
     setPrivateKey(null);
     setPublicKey(null);
+
+    window.location.href = '/';
   };
 
   return isAuthenticated ? (
@@ -62,10 +65,13 @@ const App = () => {
           role={role}
           />} />
       </Routes>
+      <ToastContainer /> {/* Toast container */}
     </Router>
-
   ) : (
-    <AuthForm onLoginSuccess={handleLoginSuccess} />
+    <Router>
+      <AuthForm onLoginSuccess={handleLoginSuccess} />
+      <ToastContainer /> {/* Toast container */}
+    </Router>
   );
 };
 
