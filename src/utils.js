@@ -132,6 +132,8 @@ function organizeChatsByUserId(data, userId, privateKeyPara) {
             username: group.name,
             fullname: group.name,
           },
+          is_pin: message.is_pin,
+          file_data: message.file_data,
         });
       }
     }

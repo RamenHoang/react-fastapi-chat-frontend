@@ -23,15 +23,17 @@ const Modal = ({ title, message, onConfirm, onCancel }) => {
           >
             Cancel
           </button>
-          <button
-            className="bg-red-500 text-white px-4 py-2 rounded"
-            onClick={() => {
-              setIsVisible(false);
-              setTimeout(onConfirm, 300);
-            }}
-          >
-            Confirm
-          </button>
+          {onConfirm && (
+            <button
+              className="bg-red-500 text-white px-4 py-2 rounded"
+              onClick={() => {
+                setIsVisible(false);
+                setTimeout(onConfirm, 300);
+              }}
+            >
+              Confirm
+            </button>
+          )}
         </div>
       </div>
     </div>

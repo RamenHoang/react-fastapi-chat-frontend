@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import useChat from "./hooks/useChat";
 import {
   organizeChatsByUserId,
@@ -10,10 +10,14 @@ import NewChatPopup from "./components/NewChatPopup";
 import NewGroupPopup from "./components/NewGroupPopup";
 import LeaveGroupPopup from "./components/LeaveGroupPopup";
 import AddGroupMemberPopup from "./components/AddGroupMemberPopup";
-import { sendMessage, markMessagesAsRead } from "./api/messages";
+import { sendMessage, markMessagesAsRead, deleteMessage, pinMessage, uploadImage, sendImageMessage } from "./api/messages";
 import { importPublicKey, encryptMessage, arrayBufferToBase64 } from "./crypto";
-import { ROLE_ADMIN } from "./constants";
+import { ROLE_ADMIN, ROLE_MODERATOR } from "./constants";
 import Navbar from "./components/Navbar";
+import Modal from "./components/Modal"; // Import Modal component
+import { deleteGroup, renameGroup, groupUsers, kickUserFromGroup } from "./api/messages"; // Import deleteGroup API
+import ModalManageMember from "./components/ModalManageMember"; // Import ModalManageMember component
+import ModalImageView from "./components/ModalImageView"; // Import ModalImageView component
 
 const Main = ({
   accessToken = null,
@@ -39,6 +43,20 @@ const Main = ({
   const [showLeaveGroup, setShowLeaveGroup] = useState(false);
   const [showAddGroupMember, setShowAddGroupMember] = useState(false);
   const [newMessage, setNewMessage] = useState("");
+  const [showDeleteGroupModal, setShowDeleteGroupModal] = useState(false); // Add state for delete group modal
+  const [reload, setReload] = useState(false); // Add reload state
+  const [showRenameGroupModal, setShowRenameGroupModal] = useState(false); // Add state for rename group modal
+  const [newGroupName, setNewGroupName] = useState(""); // Add state for new group name
+  const [showManageMembersModal, setShowManageMembersModal] = useState(false); // Add state for manage members modal
+  const [groupMembers, setGroupMembers] = useState([]); // Add state for group members
+  const [showDeleteMessageModal, setShowDeleteMessageModal] = useState(false); // Add state for delete message modal
+  const [messageToDelete, setMessageToDelete] = useState(null); // Add state for message to delete
+  const [messageToPin, setMessageToPin] = useState(null); // Add state for message to pin
+  const [pinnedMessages, setPinnedMessages] = useState([]); // Add state for pinned messages
+  const [showPinMessageModal, setShowPinMessageModal] = useState(false); // Add state for pin message modal
+  const [image, setImage] = useState(null); // Add state for image
+  const [showImageModal, setShowImageModal] = useState(false); // Add state for image modal
+  const [imageToView, setImageToView] = useState(null); // Add state for image to view
 
   // Dummy Methods
   const selectChat = async (chatId) => {
@@ -62,8 +80,8 @@ const Main = ({
     }
   };
 
-  const handleSendMessage = async (receiverId) => {
-    const message = newMessage;
+  const handleSendMessage = async (receiverId, messageContent = newMessage) => {
+    const message = messageContent;
     const selectedChat = chats.find((chat) => chat.chatId === selectedChatId);
     console.log("handleSendMessage aufgerufen mit receiverId:", receiverId);
     console.log("selectedChat vor dem Senden:", selectedChat);
@@ -102,44 +120,145 @@ const Main = ({
     setSelectedChatId(receiverId);
   };
 
-  useEffect(() => {
-    // console.log("Main useEffect aufgerufen");
-    // console.log("userData:", userData);
-    // console.log("userId:", userId);
-    // console.log("privateKeyPara:", privateKeyPara);
-    if (userId && privateKeyPara) {
-      const fetchChats = async () => {
-        try {
-          setLoadingChats(true);
-          // console.log("Lade Chats...");
-          // console.log("userData:", userData);
+  const handleDeleteGroup = async () => {
+    try {
+      await deleteGroup(accessToken, selectedChatId); // Call deleteGroup API
+      toast.success("Group deleted successfully");
+      setShowDeleteGroupModal(false); // Close modal
+      setSelectedChatId(null); // Reset selected chat
+      setReload(!reload); // Trigger reload
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      toast.error(error.response?.data?.detail || "An error occurred");
+    }
+  };
 
-          // Warte auf die Auflösung von organizeChatsByUserId
-          const organizedChats = organizeChatsByUserId(
-            userData,
-            userId,
-            privateKeyPara
-          );
+  const handleRenameGroup = async () => {
+    try {
+      await renameGroup(accessToken, selectedChatId, newGroupName); // Call renameGroup API
+      toast.success("Group renamed successfully");
+      setShowRenameGroupModal(false); // Close modal
+      setReload(!reload); // Trigger reload
+    } catch (error) {
+      console.error("Error renaming group:", error);
+      toast.error(error.response?.data?.detail || "An error occurred");
+    }
+  };
 
-          // console.log("Chats erfolgreich organisiert:", organizedChats);
+  const handleManageMembers = async () => {
+    try {
+      const members = await groupUsers(accessToken, selectedChatId); // Call groupUsers API
+      setGroupMembers(members);
+      setShowManageMembersModal(true); // Show manage members modal
+    } catch (error) {
+      console.error("Error fetching group members:", error);
+      toast.error(error.response?.data?.detail || "An error occurred");
+    }
+  };
 
-          // Setze die aufgelösten Chats im State
-          setChats(organizedChats);
-          console.log("Chats gesetzt:", organizedChats);
+  const handleKickUser = async (userId) => {
+    try {
+      await kickUserFromGroup(accessToken, selectedChatId, userId); // Call kickUserFromGroup API
+      toast.success("User kicked from group successfully");
+      setGroupMembers(groupMembers.filter((member) => member.id !== userId)); // Update group members state
+    } catch (error) {
+      console.error("Error kicking user from group:", error);
+      toast.error(error.response?.data?.detail || "An error occurred");
+    }
+  };
 
-          // Extrahiere die chatIds aus den aufgelösten Chats
-          setChatIds(organizedChats.map((chat) => chat.chatId));
-        } catch (error) {
-          console.log("Fehler beim Organisieren der Chats:", error);
-        } finally {
-          setLoadingChats(false);
-          // console.log("Chats laden beendet.");
-        }
+  const handleDeleteMessage = async () => {
+    try {
+      await deleteMessage(accessToken, messageToDelete.id); // Call deleteMessage API
+      toast.success("Message deleted successfully");
+      setShowDeleteMessageModal(false); // Close modal
+      setReload(!reload); // Trigger reload
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast.error(error.response?.data?.detail || "An error occurred");
+    }
+  };
+
+  const handlePinMessage = async () => {
+    try {
+      await pinMessage(accessToken, messageToPin.id); // Call pinMessage API
+      toast.success("Message pinned successfully");
+      setShowPinMessageModal(false); // Close modal
+      setMessageToPin(null); // Reset message to pin
+      setReload(!reload); // Trigger reload
+    } catch (error) {
+      console.error("Error pinning message:", error);
+      toast.error(error.response?.data?.detail || "An error occurred");
+    }
+  };
+
+  const fetchPinnedMessages = async () => {
+    try {
+      const pinned = selectedChat.messages.filter((message) => message.is_pin);
+      console.log("Pinned Messages:", pinned);
+      setPinnedMessages(pinned);
+    } catch (error) {
+      console.error("Error fetching pinned messages:", error);
+    }
+  };
+
+  const fetchChats = async () => {
+    try {
+      setLoadingChats(true);
+      const organizedChats = organizeChatsByUserId(
+        userData,
+        userId,
+        privateKeyPara
+      );
+      setChats(organizedChats);
+      setChatIds(organizedChats.map((chat) => chat.chatId));
+    } catch (error) {
+      console.log("Fehler beim Organisieren der Chats:", error);
+    } finally {
+      setLoadingChats(false);
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file.size > 1024 * 1024) {
+      toast.error("File size should be less than 1MB");
+      return;
+    }
+    if (file) {
+      setImage(file);
+    }
+  };
+
+  const handleSendImage = async () => {
+    if (image) {
+      const reader = new FileReader();
+      reader.readAsDataURL(image);
+      reader.onload = (e) => {
+        const base64String = e.target.result;
+        console.log("Base64 String:", base64String);
+        sendImageMessage(accessToken, base64String, selectedChatId)
+          .then(() => {
+            setImage(null); // Reset image state
+          })
+          .catch((error) => {
+            console.error("Error uploading image:", error);
+            toast.error("Error uploading image");
+          });
       };
+    }
+  };
 
+  const handleImageClick = (image) => {
+    setImageToView(image);
+    setShowImageModal(true);
+  };
+
+  useEffect(() => {
+    if (userId && privateKeyPara) {
       fetchChats();
     }
-  }, [userData, userId, privateKeyPara]);
+  }, [userData, userId, privateKeyPara, reload]);
 
   useEffect(() => {
     if (!loadingChats && selectedChatId) {
@@ -153,6 +272,12 @@ const Main = ({
       }
     }
   }, [loadingChats, selectedChatId, chats]);
+
+  useEffect(() => {
+    if (selectedChat) {
+      fetchPinnedMessages();
+    }
+  }, [selectedChat]);
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200">
@@ -188,7 +313,7 @@ const Main = ({
               );
             })}
           </ul>
-          {role == ROLE_ADMIN && (
+          {(role == ROLE_ADMIN || role == ROLE_MODERATOR) && (
             <div className="mt-6">
               {/* <button
               className="w-full rounded-lg p-3 bg-purple-500 bg-opacity-20 text-black shadow-lg transform hover:scale-105 transition-transform mb-4"
@@ -224,21 +349,92 @@ const Main = ({
 
                 {selectedChat?.isGroupMessage && (
                   <div>
-                    <button
-                      className="mr-2 p-2 bg-red-500 bg-opacity-20 text-black rounded-lg shadow-md hover:shadow-lg transition-shadow"
-                      onClick={() => setShowLeaveGroup(true)}
-                    >
-                      Leave Group
-                    </button>
-                    <button
-                      className="p-2 bg-indigo-500 bg-opacity-40 text-black rounded-lg shadow-md hover:shadow-lg transition-shadow"
-                      onClick={() => setShowAddGroupMember(true)}
-                    >
-                      Add Member
-                    </button>
+                    {(role == ROLE_ADMIN) && (
+                      <>
+                        <button
+                          className="mr-2 p-2 bg-red-500 bg-opacity-20 text-black rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                          onClick={() => setShowDeleteGroupModal(true)} // Show delete group modal
+                        >
+                          Delete Group
+                        </button>
+                        <button
+                          className="mr-2 p-2 bg-yellow-500 bg-opacity-20 text-black rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                          onClick={() => setShowRenameGroupModal(true)} // Show rename group modal
+                        >
+                          Rename Group
+                        </button>
+                      </>
+                    )}
+                    {(role == ROLE_ADMIN || role == ROLE_MODERATOR) && (
+                      <>
+                        <button
+                          className="mr-2 p-2 bg-indigo-500 bg-opacity-40 text-black rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                          onClick={() => setShowAddGroupMember(true)}
+                        >
+                          Add Member
+                        </button>
+                        <button
+                          className="p-2 bg-green-500 bg-opacity-40 text-black rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                          onClick={handleManageMembers} // Show manage members modal
+                        >
+                          Manage Members
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
+
+              {/* Pinned Messages */}
+              {pinnedMessages.length > 0 && (
+                <div className="mb-4 p-4 bg-yellow-100 rounded-lg shadow-inner max-h-40 overflow-y-auto">
+                  {pinnedMessages.map((message, index) => (
+                    <div key={index} className="mb-2 relative group">
+                      <span className="text-sm text-gray-500">
+                        {message.sender.fullname}
+                        <span className="ml-2">
+                          {formatTimestamp(message.timestamp)}
+                        </span>
+                      </span>
+                      <br />
+                      <span className="inline-block p-2 rounded-lg bg-yellow-50 shadow-sm relative">
+                        {message.content ? message.content : (
+                          <img
+                            src={message.file_data}
+                            alt="Image"
+                            className="h-32 object-cover rounded-lg cursor-pointer"
+                            onClick={() => handleImageClick(message.file_data)}
+                          />
+                        )}
+                        <button
+                          className="absolute top-0 right-0 mt-1 mr-1 p-1 bg-yellow-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ transform: "translate(70px, 0)", width: "60px", height: "30px" }}
+                          onClick={() => {
+                            setMessageToPin(message);
+                            setShowPinMessageModal(true); // Show pin message modal
+                          }}
+                        >
+                          Unpin
+                        </button>
+                        {(role == ROLE_ADMIN || role == ROLE_MODERATOR) && (
+                          <>
+                            <button
+                              className="absolute top-0 right-0 mt-1 mr-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ transform: "translate(105px, 0)", width: "30px", height: "30px" }}
+                              onClick={() => {
+                                setMessageToDelete(message);
+                                setShowDeleteMessageModal(true);
+                              }}
+                            >
+                              X
+                            </button>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="border rounded-2xl border-gray-300 p-4 overflow-y-auto flex-1 bg-gray-50 bg-opacity-80 shadow-inner flex flex-col-reverse">
                 {selectedChat?.withUser?.isTyping ? (
@@ -277,7 +473,7 @@ const Main = ({
                     <div
                       key={index}
                       className={`mb-2 ${message.sender.userId === userId ? "text-right" : ""
-                        }`}
+                        } relative group`}
                     >
                       <span className="text-sm text-gray-500">
                         {message.sender.fullname}
@@ -286,14 +482,85 @@ const Main = ({
                         </span>
                       </span>
                       <br />
-                      <span
-                        className={`inline-block p-2 rounded-lg ${message.sender.userId === userId
-                          ? "bg-blue-50"
-                          : "bg-green-50"
-                          } shadow-sm`}
-                      >
-                        {message.content}
-                      </span>
+                      {message.sender.userId === userId ? (
+                        <span
+                          className={`inline-block p-2 rounded-lg bg-blue-50 shadow-sm relative`}
+                        >
+                          {!message.is_pin && (
+                            <button
+                              className={`absolute top-0 left-0 mt-1 mr-1 p-1 bg-yellow-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity`}
+                              style={{ position: "absolute", top: 0, left: 0, transform: "translate(-40px, 0)", width: "30px", height: "30px" }}
+                              onClick={() => {
+                                setMessageToPin(message);
+                                setShowPinMessageModal(true); // Show pin message modal
+                              }}
+                            >
+                              Pin
+                            </button>
+                          )}
+                          {(role == ROLE_ADMIN || role == ROLE_MODERATOR) && (
+                            <>
+                              <button
+                                className="absolute top-0 right-0 mt-1 mr-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{ position: "absolute", top: 0, left: 0, transform: "translate(-75px, 0)", width: "30px", height: "30px" }}
+                                onClick={() => {
+                                  setMessageToDelete(message);
+                                  setShowDeleteMessageModal(true);
+                                }}
+                              >
+                                X
+                              </button>
+                            </>
+                          )}
+                          {message.content ? message.content : (
+                            <img
+                              src={message.file_data}
+                              alt="Image"
+                              className="h-32 object-cover rounded-lg cursor-pointer"
+                              onClick={() => handleImageClick(message.file_data)}
+                            />
+                          )}
+                        </span>
+                      ) : (
+                        <span
+                          className={`inline-block p-2 rounded-lg bg-green-50 shadow-sm relative`}
+                        >
+                          {message.content ? message.content : (
+                            <img
+                              src={message.file_data}
+                              alt="Image"
+                              className="h-32 object-cover rounded-lg cursor-pointer"
+                              onClick={() => handleImageClick(message.file_data)}
+                            />
+                          )}
+                          {!message.is_pin && (
+                            <button
+                              className={`absolute top-0 right-0 mt-1 mr-1 p-1 bg-yellow-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity`}
+                              style={{ transform: "translate(40px, 0)", width: "30px", height: "30px" }}
+                              onClick={() => {
+                                setMessageToPin(message);
+                                setShowPinMessageModal(true); // Show pin message modal
+                              }}
+                            >
+                              Pin
+                            </button>
+                          )}
+                          {(role == ROLE_ADMIN || role == ROLE_MODERATOR) && (
+                            <>
+                              <button
+                                className="absolute top-0 right-0 mt-1 mr-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{ transform: "translate(75px, 0)", width: "30px", height: "30px" }}
+                                onClick={() => {
+                                  setMessageToDelete(message);
+                                  setShowDeleteMessageModal(true);
+                                }}
+                              >
+                                X
+                              </button>
+                            </>
+                          )}
+                        </span>
+                      )}
                     </div>
                   ))
                   : null}
@@ -328,6 +595,19 @@ const Main = ({
                   onClick={() => handleSendMessage(selectedChatId)}
                 >
                   Send
+                </button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="ml-2 p-2 border rounded-lg"
+                />
+                <button
+                  className="ml-2 p-2 bg-green-400 text-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                  onClick={handleSendImage}
+                  disabled={!image}
+                >
+                  Send Image
                 </button>
               </div>
             </div>
@@ -365,6 +645,60 @@ const Main = ({
             accessToken={accessToken}
             selectedChatId={selectedChatId}
             onClose={() => setShowAddGroupMember(false)}
+          />
+        )}
+        {showDeleteGroupModal && (
+          <Modal
+            title="Confirm Delete"
+            message="Are you sure you want to delete this group?"
+            onConfirm={handleDeleteGroup}
+            onCancel={() => setShowDeleteGroupModal(false)}
+          />
+        )}
+        {showRenameGroupModal && (
+          <Modal
+            title="Rename Group"
+            message={
+              <input
+                type="text"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="Enter new group name"
+                className="p-2 border rounded-lg w-full"
+              />
+            }
+            onConfirm={handleRenameGroup}
+            onCancel={() => setShowRenameGroupModal(false)}
+          />
+        )}
+        {showManageMembersModal && (
+          <ModalManageMember
+            title="Manage Members"
+            groupMembers={groupMembers}
+            handleKickUser={handleKickUser}
+            onCancel={() => setShowManageMembersModal(false)}
+          />
+        )}
+        {showDeleteMessageModal && (
+          <Modal
+            title="Confirm Delete"
+            message="Are you sure you want to delete this message?"
+            onConfirm={handleDeleteMessage}
+            onCancel={() => setShowDeleteMessageModal(false)}
+          />
+        )}
+        {showPinMessageModal && (
+          <Modal
+            title="Confirm Pin"
+            message={`Are you sure you want to ${messageToPin.is_pin ? "unpin" : "pin"} this message?`}
+            onConfirm={handlePinMessage}
+            onCancel={() => setShowPinMessageModal(false)}
+          />
+        )}
+        {showImageModal && (
+          <ModalImageView
+            image={imageToView}
+            onClose={() => setShowImageModal(false)}
           />
         )}
       </div>
